@@ -23,17 +23,16 @@ const float MOTOR_SPEED_FILTER_UPDATE_COEF = 0.15;
 const char STORAGE_NAMESPACE[] = "trackray";
 
 extern rb::SerialPWM serialPWM;
-extern int8_t pwm_index[32];
+extern int8_t pwm_index[33];
 
 void setPWM(rb::SerialPWM::value_type& channel, int8_t power);
 void updatePWM(void * param);
 }
 
 enum shiftRegPins {
-    TR_OUT1, TR_OUT2, TR_OUT3, TR_OUT4, TR_OUT5, TR_OUT6, TR_OUT7, TR_OUT8, 
-    TR_OUT9, TR_OUT10, TR_OUT11, TR_OUT12, TR_OUT13, TR_OUT14, TR_OUT15, TR_OUT16, 
-    TR_OUT17, TR_OUT18, TR_OUT19, TR_OUT20, TR_OUT21, TR_OUT22, TR_OUT23, TR_OUT24, 
-    TR_OUT25, TR_OUT26, TR_OUT27, TR_OUT28, TR_OUT29, TR_OUT30, TR_OUT31, TR_OUT32,
+    D0, D1, D2, D3, D4, D5, D6, D7, D8, D9, D10, D11, D12, D13, D14, D15, D16, 
+    D17, D18, D19, D20, D21, D22, D23, D24, D25, 
+    TR_OUT26, TR_OUT27, TR_OUT28, TR_OUT29, TR_OUT30, TR_OUT31, TR_OUT32,
 };
 
 bool trrReadButton();

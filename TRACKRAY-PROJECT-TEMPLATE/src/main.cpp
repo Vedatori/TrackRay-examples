@@ -2,7 +2,7 @@
 
 void setup() {
     TrackRay.begin();
-    trrSetLedDigital(TR_OUT1, true);
+    trrSetLedDigital(1, true);
 }
 
 void loop() {

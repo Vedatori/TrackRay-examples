@@ -46,10 +46,10 @@ void handleJSData() {
 
 void setup() {
     TrackRay.begin();
-    Serial.begin(115200);
+    TrackRay.printOffsets();
 
-    wifiManager.autoConnect("TrackRay");
-    //WiFi.begin(ssid, password);
+    //wifiManager.autoConnect("TrackRay");
+    WiFi.begin(ssid, password);
     while (WiFi.status() != WL_CONNECTED) {
         Serial.print(".");
         delay(1000);
@@ -81,6 +81,7 @@ void loop()
     webserver.handleClient();
     if(millis() > prevControlTime + CONTROL_PERIOD) {
         prevControlTime = millis();
+        TrackRay.gyroUpdate();
 
         if(millis() > prevCommunicationTime + communicationTimeout) {
             stateVector.joystickX = 0;
@@ -92,35 +93,9 @@ void loop()
         stateVector.engineLeftSpeed = constrain(stateVector.engineLeftSpeed, -100, 100);
         stateVector.engineRightSpeed = constrain(stateVector.engineRightSpeed, -100, 100);
 
-        static bool trackSide = 0;
+        trrMotorsSetSpeed(stateVector.engineLeftSpeed, stateVector.engineRightSpeed);
 
-        /*if(trackSide) 
-            stateVector.engineLeftSpeed = 0;
-        else
-            stateVector.engineRightSpeed = 0;*/
-
-        trackSide = !trackSide;
-
-        analogWrite(TR_OUT28, 100);
-        if(stateVector.engineRightSpeed > 0) {
-            analogWrite(TR_OUT29, 0);
-            analogWrite(TR_OUT30, stateVector.engineRightSpeed);
-        }
-        else {
-            analogWrite(TR_OUT29, -stateVector.engineRightSpeed);
-            analogWrite(TR_OUT30, 0);
-        }
-
-        if(stateVector.engineLeftSpeed > 0) {
-            analogWrite(TR_OUT31, 0);
-            analogWrite(TR_OUT32, stateVector.engineLeftSpeed);
-        }
-        else {
-            analogWrite(TR_OUT31, -stateVector.engineLeftSpeed);
-            analogWrite(TR_OUT32, 0);
-        }
-
-        Serial.printf("%d %d %d\n", stateVector.engineLeftSpeed, stateVector.engineRightSpeed, digitalRead());
+        printf("%d %d %d %f %f %f\n", stateVector.engineLeftSpeed, stateVector.engineRightSpeed, trrReadButton(), trrGyroYaw(), trrGyroPitch(), trrGyroRoll());
     }
 
     if(millis() > prevBlinkTime + BLINK_PERIOD) {
@@ -132,9 +107,9 @@ void loop()
         static uint8_t prevI = 0;
         if(i++ > 24)
             i = 0;
-        digitalWrite((shiftRegPins) i, 1);
-        digitalWrite((shiftRegPins) prevI, 0);
-        analogWrite(TR_OUT_LIGHT, i*10);
+        trrSetLedDigital(i, 1);
+        trrSetLedDigital(prevI, 0);
+        //trrSetFlashLightAnalog(i*4);
         prevI = i;
     }
 }

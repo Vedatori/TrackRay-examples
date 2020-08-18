@@ -27,9 +27,75 @@ void TR::updatePWM(void * param) {
         ledcAttachPin(TR::LIGHT_PIN, TR::LIGHT_PWM_CHANNEL);
         digitalWrite(TR::LIGHT_PIN, 0);
         TrackRay.updateMotorsSpeed();
+        TrackRay.gyroUpdate();
+
         vTaskDelay(20);
     }
 }
+bool digit[10][5][5] = {
+    {   // 0
+        {0,1,1,1,0},
+        {0,1,0,1,0},
+        {0,1,0,1,0},
+        {0,1,0,1,0},
+        {0,1,1,1,0}
+    }, {// 1
+        {0,0,0,1,0},
+        {0,0,1,1,0},
+        {0,1,0,1,0},
+        {0,0,0,1,0},
+        {0,0,0,1,0}
+    }, {// 2
+        {0,0,1,0,0},
+        {0,1,0,1,0},
+        {0,0,0,1,0},
+        {0,0,1,0,0},
+        {0,1,1,1,0}
+    }, {// 3
+        {0,1,1,1,0},
+        {0,0,0,1,0},
+        {0,0,1,0,0},
+        {0,0,0,1,0},
+        {0,1,1,0,0}
+    }, {// 4
+        {0,1,0,0,0},
+        {0,1,0,0,0},
+        {0,1,1,1,0},
+        {0,0,1,0,0},
+        {0,0,1,0,0}
+    }, {// 5
+        {0,1,1,1,0},
+        {0,1,0,0,0},
+        {0,1,1,1,0},
+        {0,0,0,1,0},
+        {0,1,1,1,0}
+    }, {// 6
+        {0,1,1,1,0},
+        {0,1,0,0,0},
+        {0,1,1,1,0},
+        {0,1,0,1,0},
+        {0,1,1,1,0}
+    }, {// 7
+        {0,1,1,1,0},
+        {0,0,0,1,0},
+        {0,0,1,0,0},
+        {0,1,0,0,0},
+        {0,1,0,0,0}
+    }, {// 8
+        {0,1,1,1,0},
+        {0,1,0,1,0},
+        {0,1,1,1,0},
+        {0,1,0,1,0},
+        {0,1,1,1,0}
+    }, {// 9
+        {0,1,1,1,0},
+        {0,1,0,1,0},
+        {0,1,1,1,0},
+        {0,0,0,1,0},
+        {0,1,1,1,0}
+    },
+};
+
 
 bool trrReadButton() {
     return TrackRay.getButton(); 
@@ -45,12 +111,12 @@ void trrSetLedAnalog(int8_t pin, const int8_t value) {
         TR::setPWM(TR::serialPWM[TR::pwm_index[pin]], value);
 }
 void trrSetLedAllDigital(const bool state) {
-    for(uint8_t i = 0; i < 25; ++i) {
+    for(uint8_t i = 1; i <= 25; ++i) {
         TR::setPWM(TR::serialPWM[TR::pwm_index[i]], state * TR::PWM_MAX);
     }
 }
 void trrSetLedAllAnalog(const int8_t value) {
-    for(uint8_t i = 0; i < 25; ++i) {
+    for(uint8_t i = 1; i <= 25; ++i) {
         TR::setPWM(TR::serialPWM[TR::pwm_index[i]], value);
     }
 }
@@ -96,18 +162,27 @@ void trrGyroCalibrate() {
     TrackRay.gyroCalibrate();
 }
 
+void trrDisplayDigit(const uint8_t digitID) {
+    TrackRay.displayDigit(digitID);
+}
+void trrDisplayChar(const char letter) {
+    TrackRay.displayChar(letter);
+}
+void trrDisplayText(String text, uint8_t repetitions) {
+    TrackRay.displayText(text, repetitions);
+}
+
 TrackRayClass::TrackRayClass(void) {
+    Serial.begin(115200);
     ledcSetup(TR::LIGHT_PWM_CHANNEL, TR::LIGHT_PWM_FREQUENCY, TR::LIGHT_PWM_RESOLUTION);
     ledcAttachPin(TR::LIGHT_PIN, TR::LIGHT_PWM_CHANNEL);
-    xTaskCreate(TR::updatePWM, "updatePWM", configMINIMAL_STACK_SIZE , (void*) 0, 1, NULL);
+    xTaskCreate(TR::updatePWM, "updatePWM", 10000 , (void*) 0, 1, NULL);
     for(uint8_t i = 0; i < 3; ++i) {
         motorsSpeed[i] = 0;
         motorsSpeedFiltered[i] = 0;
         gyroYPR[i] = 0;
         gyroOffsets[i] = 0;
     }
-    
-    Serial.begin(115200);
 }
 
 bool TrackRayClass::getButton() {
@@ -228,6 +303,35 @@ void TrackRayClass::gyroCalibrate() {
 }
 void TrackRayClass::gyroUpdate() {
     updateGyroData(gyroYPR);
+}
+
+void TrackRayClass::displayDigit(const uint8_t digitID) {
+    for(uint8_t i = 0; i < 5; ++i) {
+        for(uint8_t j = 0; j < 5; ++j) {
+            trrSetLedDigital( i*5 + j + 1, digit[digitID][i][j]);
+        }
+    }
+}
+void TrackRayClass::displayChar(const char letter) {
+    if(letter < 48 || letter > 57) {
+        return;
+    }
+    displayDigit(letter - 48);
+}
+void TrackRayClass::displayText(String text, uint8_t repetitions) {
+    for(uint8_t i = 0; i < repetitions; ++i) {
+        trrSetLedAllDigital(1);
+        delay(200);
+        for(uint8_t i = 0; i < text.length(); ++i) {
+            displayChar(text[i]);
+            delay(500);
+            trrSetLedAllDigital(0);
+            delay(50);
+        }
+        trrSetLedAllDigital(1);
+        delay(500);
+        trrSetLedAllDigital(0);
+    }
 }
 
 TrackRayClass TrackRay;

@@ -31,7 +31,7 @@ uint32_t prevControlTime = 0;
 const uint16_t communicationTimeout = 1000;
 uint32_t prevCommunicationTime = 0;
 
-const uint16_t BLINK_PERIOD = 50;
+const uint16_t BLINK_PERIOD = 100;
 uint32_t prevBlinkTime = 0;
 
 //This function takes the parameters passed in the URL(the x and y coordinates of the joystick)
@@ -46,10 +46,9 @@ void handleJSData() {
 
 void setup() {
     TrackRay.begin();
-    TrackRay.printOffsets();
 
-    //wifiManager.autoConnect("TrackRay");
-    WiFi.begin(ssid, password);
+    wifiManager.autoConnect("TrackRay");
+    //WiFi.begin(ssid, password);
     while (WiFi.status() != WL_CONNECTED) {
         Serial.print(".");
         delay(1000);
@@ -57,6 +56,7 @@ void setup() {
 
     Serial.print("WiFi connected. IP address: ");
     Serial.println(WiFi.localIP());   // You can get IP address assigned to ESP
+    trrDisplayText(WiFi.localIP().toString(), 1);
     
     //initialize SPIFFS to be able to serve up the static HTML files. 
     if (!SPIFFS.begin()) {
@@ -81,7 +81,6 @@ void loop()
     webserver.handleClient();
     if(millis() > prevControlTime + CONTROL_PERIOD) {
         prevControlTime = millis();
-        TrackRay.gyroUpdate();
 
         if(millis() > prevCommunicationTime + communicationTimeout) {
             stateVector.joystickX = 0;
@@ -105,11 +104,13 @@ void loop()
         ledOn = !ledOn;
         static uint8_t i = 0;
         static uint8_t prevI = 0;
-        if(i++ > 24)
+        if(i++ > 25)
             i = 0;
         trrSetLedDigital(i, 1);
         trrSetLedDigital(prevI, 0);
         //trrSetFlashLightAnalog(i*4);
+        
+        //trrDisplayDigit(i);
         prevI = i;
     }
 }

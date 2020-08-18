@@ -28,6 +28,7 @@ extern int8_t pwm_index[33];
 void setPWM(rb::SerialPWM::value_type& channel, int8_t power);
 void updatePWM(void * param);
 }
+extern bool digit[10][5][5];
 
 enum shiftRegPins {
     D0, D1, D2, D3, D4, D5, D6, D7, D8, D9, D10, D11, D12, D13, D14, D15, D16, 
@@ -56,6 +57,10 @@ float trrGyroRoll();
 void trrGyroData(float ypr[]);
 void trrGyroCalibrate();
 
+void trrDisplayDigit(const uint8_t digitID);
+void trrDisplayChar(const char letter);
+void trrDisplayText(String text, uint8_t repetitions);
+
 class TrackRayClass {
     bool buttonPressed = false;
     uint8_t lightBrightness = 0;
@@ -81,6 +86,10 @@ public:
     void printOffsets() {
         printf("offsets: %d %d %d\n", gyroOffsets[0], gyroOffsets[1], gyroOffsets[2]);
     }
+
+    void displayDigit(const uint8_t digitID);
+    void displayChar(const char letter);
+    void displayText(String text, uint8_t repetitions);
 };
 
 extern TrackRayClass TrackRay;

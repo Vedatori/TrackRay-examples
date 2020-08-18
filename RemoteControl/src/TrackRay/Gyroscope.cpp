@@ -85,10 +85,9 @@ bool initiateGyroscope(const int16_t aOffsets[]) {
     return true;
 }
 void updateGyroData(float * aYPR) {
-    
     if (dmpReady)   // wait for MPU interrupt or extra packet(s) available
     {
-        /*while (!mpuInterrupt && fifoCount < packetSize) {}*/
+        //while (!mpuInterrupt && fifoCount < packetSize) {}
         // reset interrupt flag and get INT_STATUS byte
         //mpuInterrupt = false;
         mpuIntStatus = mpu.getIntStatus();

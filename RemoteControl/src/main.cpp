@@ -6,7 +6,6 @@
 #include <WiFiClient.h>
 #include <Webserver.h>
 #include <ArduinoWebsockets.h>
-#include "esp_camera.h"
 #include <Wire.h>
 
 #include "StateVector.h"

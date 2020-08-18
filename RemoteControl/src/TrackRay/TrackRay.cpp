@@ -160,6 +160,7 @@ void trrGyroData(float ypr[]) {
 }
 void trrGyroCalibrate() {
     TrackRay.gyroCalibrate();
+    trrSetLedAllDigital(1);
 }
 
 void trrDisplayDigit(const uint8_t digitID) {
@@ -176,7 +177,6 @@ TrackRayClass::TrackRayClass(void) {
     Serial.begin(115200);
     ledcSetup(TR::LIGHT_PWM_CHANNEL, TR::LIGHT_PWM_FREQUENCY, TR::LIGHT_PWM_RESOLUTION);
     ledcAttachPin(TR::LIGHT_PIN, TR::LIGHT_PWM_CHANNEL);
-    xTaskCreate(TR::updatePWM, "updatePWM", 10000 , (void*) 0, 1, NULL);
     for(uint8_t i = 0; i < 3; ++i) {
         motorsSpeed[i] = 0;
         motorsSpeedFiltered[i] = 0;
@@ -275,6 +275,7 @@ void TrackRayClass::begin() {
             trrGyroCalibrate();
         }
     }
+    xTaskCreate(TR::updatePWM, "updatePWM", 10000 , (void*) 0, 1, NULL);
 }
 
 bool TrackRayClass::gyroGetEnabled() {

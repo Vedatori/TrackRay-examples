@@ -27,9 +27,14 @@ void TR::updatePWM(void * param) {
         ledcAttachPin(TR::LIGHT_PIN, TR::LIGHT_PWM_CHANNEL);
         digitalWrite(TR::LIGHT_PIN, 0);
         TrackRay.updateMotorsSpeed();
-        TrackRay.gyroUpdate();
 
         vTaskDelay(20);
+    }
+}
+void TR::updateGyro(void * param) {
+    for(;;) {
+        TrackRay.gyroUpdate();
+        vTaskDelay(100);
     }
 }
 bool digit[10][5][5] = {
@@ -275,7 +280,8 @@ void TrackRayClass::begin() {
             trrGyroCalibrate();
         }
     }
-    xTaskCreate(TR::updatePWM, "updatePWM", 10000 , (void*) 0, 1, NULL);
+    xTaskCreate(TR::updatePWM, "updatePWM", configMINIMAL_STACK_SIZE , (void*) 0, 1, NULL);
+    xTaskCreate(TR::updateGyro, "updateGyro", 10000 , (void*) 0, 1, NULL);
 }
 
 bool TrackRayClass::gyroGetEnabled() {

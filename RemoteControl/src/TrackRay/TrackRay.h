@@ -27,6 +27,7 @@ extern int8_t pwm_index[33];
 
 void setPWM(rb::SerialPWM::value_type& channel, int8_t power);
 void updatePWM(void * param);
+void updateGyro(void * param);
 }
 extern bool digit[10][5][5];
 

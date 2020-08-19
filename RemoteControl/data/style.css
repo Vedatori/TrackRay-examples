@@ -1,0 +1,108 @@
+body {
+    overflow	: hidden;
+    padding		: 0;
+    margin		: 0;
+    background-color: #303030;
+    color: #FFFFFF;
+}
+.wrapper {
+    position	: absolute;
+    top		: 0px;
+    width		: 100%;
+    height		: 100%;
+    text-align	: center;
+    display: grid;
+    grid-template-columns: 1fr 1.2fr;
+    grid-template-rows: min-content min-content 1fr;
+    grid-gap:1em;
+}
+/*.wrapper > div{
+    background:#505050;
+}*/
+.wrapper a{
+    color		: #FFE640;
+    text-decoration	: none;
+}
+.wrapper a:hover{
+    text-decoration	: underline;
+}
+.box1 {
+    justify-self:end;
+    align-self: center;
+}
+.box2 {
+    justify-self: start;
+    align-self: center;
+}
+.box3 {
+    justify-self: center;
+    grid-column: 1/3;
+}
+.box4 {
+    grid-column: 1/3;
+    position: relative;
+}
+.joystick {
+    background-color: white;
+    border-radius: 100%;
+    width: 80px;
+    height: 80px;
+    user-select: none;
+    cursor: pointer;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    margin-top: -40px;
+    margin-left: -40px;
+}
+.canvas {
+    background-color: #404040;
+    border-radius: 100%;
+    width: 80px;
+    height: 80px;
+    user-select: none;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    margin-top: -40px;
+    margin-left: -40px;
+}
+input[type=password] {
+    background-color: white;
+    text-align:center;
+    border-radius: 7px;
+    border-width: 0px;
+    font-size: 20px;
+    height: 50px;
+    width: 300px;
+}
+input[type=text] {
+    background-color: white;
+    text-align:center;
+    border-radius: 7px;
+    border-width: 0px;
+    font-size: 2.5vh;
+    height: 6vh;
+    width: 80vw;
+}
+input[type=submit] {
+    width: 100%;
+    border: none;
+    text-align:center;
+    border-radius: 7px;
+    background-color: #FFE640;
+    font-size: 2.5vh;
+    height: 10vh;
+    width: 20vw;
+}
+input[type=button] {
+    border: none;
+    text-align:center;
+    border-radius: 7px;
+    border-width: 0px;
+    background-color: #FFE640;
+    font-size: 2.5vh;
+    height: 6vh;
+    width: 15vw;
+}
+h1 {text-align: center; color: #FFFFFF}

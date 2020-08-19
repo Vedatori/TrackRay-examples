@@ -64,8 +64,10 @@ void setup() {
     else {
         Serial.println("SPIFFS Mount succesfull");
     }
-    //set the static pages on SPIFFS for the html and js
-    webserver.serveStatic("/", SPIFFS, "/joystick.html"); 
+
+    webserver.serveStatic("/", SPIFFS, "/webApp.html");
+    webserver.serveStatic("/style.css", SPIFFS, "/style.css");
+    
     //call handleJSData function when this URL is accessed by the js in the html file
     webserver.on("/jsData.html", handleJSData);
     webserver.begin();

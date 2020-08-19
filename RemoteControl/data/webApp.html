@@ -1,0 +1,132 @@
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<meta name="theme-color" content="#404040"/>
+
+		<link rel="stylesheet" type="text/css" href="style.css">
+	</head>
+	<body>
+		<div class = "wrapper">
+			<div class="box1"><a href="http://wp.vedatori.com/" target="_blank"><img src="http://wp.vedatori.com/wp-content/uploads/2019/03/logo-2-e1551903315141.png" alt="vedatori.com" style="height:10vh;" align="middle"></a></div>
+			<div class="box2"><h1 style="font-size:3.5vh"><font color = "#F5F5F5" face='verdana'>
+				<a href="https://github.com/vedatori/TrackRay" target="_blank">TrackRay</a><br>Remote Control
+			</font></h1></div>
+			<div class="box3" id="position">
+			</div>
+			<div class="box4" id="container"><canvas class="canvas" id="canvas"></canvas></div>
+		</div>
+		
+		<script>
+			const joystick = createJoystick(document.getElementById('container'));
+
+			const maxDiff = Math.min(document.getElementById('container').clientWidth, document.getElementById('container').clientHeight)/2.5;
+
+			function createJoystick(parent) {
+				const maxDiff = Math.min(document.getElementById('container').clientWidth, document.getElementById('container').clientHeight)/2.5;
+				const stick = document.createElement('div');
+				stick.classList.add('joystick');
+
+				stick.addEventListener('mousedown', handleMouseDown);
+				document.addEventListener('mousemove', handleMouseMove);
+				document.addEventListener('mouseup', handleMouseUp);
+				stick.addEventListener('touchstart', handleMouseDown);
+				document.addEventListener('touchmove', handleMouseMove);
+				document.addEventListener('touchend', handleMouseUp);
+
+				let dragStart = null;
+				let currentPos = { x: 0, y: 0 };
+
+				function handleMouseDown(event) {
+					stick.style.transition = '0s';
+					if (event.changedTouches) {
+					dragStart = {
+						x: event.changedTouches[0].clientX,
+						y: event.changedTouches[0].clientY,
+					};
+					return;
+					}
+					dragStart = {
+					x: event.clientX,
+					y: event.clientY,
+					};
+
+				}
+
+				function getMaxDiff() {
+					return maxDiff;
+				}
+
+				function handleMouseMove(event) {
+					if (dragStart === null) return;
+					event.preventDefault();
+					if (event.changedTouches) {
+					event.clientX = event.changedTouches[0].clientX;
+					event.clientY = event.changedTouches[0].clientY;
+					}
+					const xDiff = event.clientX - dragStart.x;
+					const yDiff = event.clientY - dragStart.y;
+					const angle = Math.atan2(yDiff, xDiff);
+						const distance = Math.min(maxDiff, Math.hypot(xDiff, yDiff));
+						const xNew = distance * Math.cos(angle);
+						const yNew = distance * Math.sin(angle);
+					stick.style.transform = `translate3d(${xNew}px, ${yNew}px, 0px)`;
+					currentPos = { x: xNew, y: yNew };
+				}
+
+				function handleMouseUp(event) {
+					if (dragStart === null) return;
+					stick.style.transition = '0.3s';
+					stick.style.transform = `translate3d(0px, 0px, 0px)`;
+					dragStart = null;
+					currentPos = { x: 0, y: 0 };
+				}
+
+				parent.appendChild(stick);
+				return {
+					getPosition: () => currentPos,
+				};
+			}
+
+			var newX = 0;
+			var newY = 0;
+			setInterval(function(){
+				newX = Math.round(joystick.getPosition().x / maxDiff * 100);
+				newY = Math.round(joystick.getPosition().y / maxDiff * -100);
+				var xhr = new XMLHttpRequest();
+				xhr.open('PUT', "./jsData.html?x=" + newX + "&y=" + newY)
+				xhr.send();
+			}, 100);
+
+			var canvas = document.getElementById('canvas');
+			canvas.style.background = "#505050";
+			canvas.style.width = 2 * maxDiff;
+			canvas.style.height = 2 * maxDiff;
+			canvas.style.marginTop = -maxDiff;
+			canvas.style.marginLeft = -maxDiff;
+			canvas.width = 2 * maxDiff;
+			canvas.height = 2 * maxDiff;
+			
+			var context = canvas.getContext('2d');
+			for(let step = 1; step < 6; step++) {
+				context.beginPath();
+				context.arc(maxDiff, maxDiff, document.getElementById('container').clientHeight/(step*2), 0, 2 * Math.PI, false);
+				if(step % 2 == 0)
+					context.fillStyle = '#303030';
+				else
+					context.fillStyle = '#404040';
+				context.fill();
+			}
+
+			window.onorientationchange = function() { 
+				var orientation = window.orientation; 
+				switch(orientation) { 
+					case 0:
+					case 90:
+					case -90: window.location.reload(); 
+					break; 
+				} 
+			};
+		</script>
+	</body>
+</html>

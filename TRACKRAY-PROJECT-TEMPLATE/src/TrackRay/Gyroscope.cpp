@@ -1,6 +1,6 @@
 #include "Gyroscope.h"
-//#include <MPU6050_6Axis_MotionApps20.h>
-#include "MPU6050_6Axis_MotionApps_V6_12.h"
+#include <MPU6050_6Axis_MotionApps20.h>
+//#include "MPU6050_6Axis_MotionApps_V6_12.h"
 
 volatile bool mpuInterrupt = false;     // indicates whether MPU interrupt pin has gone high
 void dmpDataReady() {
@@ -33,7 +33,7 @@ float euler[3];         // [psi, theta, phi]    Euler angle container
 
 bool initiateGyroscope(const int16_t aOffsets[]) {
     mpu.initialize();   // initialize device
-
+    delay(20);
     devStatus = mpu.dmpInitialize();
 
     // verify connection

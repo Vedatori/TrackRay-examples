@@ -8,7 +8,6 @@
 #include <WebSocketsServer.h>   //https://github.com/Links2004/arduinoWebSockets
 #include <Wire.h>
 
-#include "StateVector.h"
 #include "TrackRay/TrackRay.h"
 #include "credentials.h"
 
@@ -16,12 +15,8 @@ WebSocketsServer webSocket = WebSocketsServer(1337);
 WebServer webserver(80);
 WiFiManager wifiManager;
 
-StateVector stateVector;
-
 const uint8_t CONTROL_PERIOD = 50;
 uint32_t prevControlTime = 0;
-const uint16_t communicationTimeout = 1000;
-uint32_t prevCommunicationTime = 0;
 
 const uint16_t BLINK_PERIOD = 200;
 uint32_t prevBlinkTime = 0;
@@ -48,23 +43,36 @@ void onWebSocketEvent(uint8_t client_num, WStype_t type, uint8_t * payload, size
 
         // Handle text messages from client
         case WStype_TEXT:{
-            //printf("[%u] Received text: %s\n", client_num, payload);
             const char delimiter[2] = ",";
             char *token;
             token = strtok((char *)payload, delimiter);
             char controlMsg[] = "control";
+            char commandMsg[] = "command";
+            int8_t joystickX = 0, joystickY = 0;
             if(strcmp(token, controlMsg) == 0) {
                 token = strtok(NULL, delimiter);
-                stateVector.joystickX = atoi(token);
+                joystickX = atoi(token);
                 token = strtok(NULL, delimiter);
-                stateVector.joystickY = atoi(token);
-                //printf("%d %d", stateVector.joystickX, stateVector.joystickY);
-                prevCommunicationTime = millis();
+                joystickY = atoi(token);
+                trrControlMovement(joystickX, joystickY);
+            }
+            else if(strcmp(token, commandMsg) == 0) {
+                token = strtok(NULL, delimiter);
+                if(strcmp(token, "shoot") == 0) {
+                    trrCanonShoot(1000);
+                }
+                else if(strcmp(token, "flash on") == 0) {
+                    trrSetFlashLightAnalog(100);
+                }
+                else if(strcmp(token, "flash half") == 0) {
+                    trrSetFlashLightAnalog(50);
+                }
+                else if(strcmp(token, "flash off") == 0) {
+                    trrSetFlashLightAnalog(0);
+                }
+
             }
         }
-
-
-
             //webSocket.sendTXT(client_num, msg_buf);
             break;
 
@@ -129,27 +137,13 @@ void loop()
         prevControlTime = millis();
         
         webSocket.loop();
+        trrGyroUpdate();
 
-        if(millis() > prevCommunicationTime + communicationTimeout) {
-            stateVector.joystickX = 0;
-            stateVector.joystickY = 0;
-        }
-        stateVector.engineLeftSpeed = (stateVector.joystickY + ((stateVector.joystickY >= 0) ? 1 : -1) * stateVector.joystickX);
-        stateVector.engineRightSpeed = (stateVector.joystickY - ((stateVector.joystickY >= 0) ? 1 : -1) * stateVector.joystickX);
-
-        stateVector.engineLeftSpeed = constrain(stateVector.engineLeftSpeed, -100, 100);
-        stateVector.engineRightSpeed = constrain(stateVector.engineRightSpeed, -100, 100);
-
-        trrMotorsSetSpeed(stateVector.engineLeftSpeed, stateVector.engineRightSpeed);
-
-        printf("%d %d %d %f %f %f\n", stateVector.engineLeftSpeed, stateVector.engineRightSpeed, trrReadButton(), trrGyroYaw(), trrGyroPitch(), trrGyroRoll());
+        printf("%d %f %f %f\n", trrReadButton(), trrGyroYaw(), trrGyroPitch(), trrGyroRoll());
     }
 
     if(millis() > prevBlinkTime + BLINK_PERIOD) {
         prevBlinkTime = millis();
-        static bool ledOn = 0;
-        //digitalWrite(TR1, ledOn);
-        ledOn = !ledOn;
         static uint8_t i = 0;
         static uint8_t prevI = 0;
         if(i++ > 25)

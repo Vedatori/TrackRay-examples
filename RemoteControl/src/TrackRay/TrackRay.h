@@ -21,6 +21,8 @@ const uint16_t LIGHT_PWM_FREQUENCY = 5000;
 const uint8_t LIGHT_PWM_RESOLUTION = 8;
 const float MOTOR_SPEED_FILTER_UPDATE_COEF = 0.15;
 const char STORAGE_NAMESPACE[] = "trackray";
+const uint16_t communicationTimeout = 1000;
+const uint16_t shootingLength = 3000;
 
 extern rb::SerialPWM serialPWM;
 extern int8_t pwm_index[33];
@@ -46,10 +48,11 @@ void trrSetLedAllAnalog(const int8_t value);
 void trrSetFlashLightDigital(const bool state);
 void trrSetFlashLightAnalog(const int8_t value);
 
+void trrControlMovement(const int8_t joystickX, const int8_t joystickY);
 void trrMotorsSetSpeed(const int8_t speedLeft, const int8_t speedRight);
 void trrMotorsSetSpeedLeft(const int8_t speed);
 void trrMotorsSetSpeedRight(const int8_t speed);
-void trrCanonSetSpeed(const int8_t speed);
+void trrCanonShoot(const uint16_t length);
 
 bool trrGyroEnabled();
 float trrGyroYaw();
@@ -57,6 +60,7 @@ float trrGyroPitch();
 float trrGyroRoll();
 void trrGyroData(float ypr[]);
 void trrGyroCalibrate();
+void trrGyroUpdate();
 
 void trrDisplayDigit(const uint8_t digitID);
 void trrDisplayChar(const char letter);
@@ -71,12 +75,18 @@ class TrackRayClass {
     float gyroYPR[3];
     int16_t gyroOffsets[3];
     Preferences preferences;
+    uint32_t prevCommunicationTime = 0;
+    bool connectionActive = 0;
+    uint32_t shootingEnd = 0;
+
 public:
     TrackRayClass();
     bool getButton();
     void setButton(bool pressed);
     void setFlashLight(int16_t brightness);
     void setMotorsSpeed(const int8_t speed, const int8_t index);
+    void controlMovement(const int8_t joystickX, const int8_t joystickY);
+    void canonShoot(const uint16_t length);
     void updateMotorsSpeed();
     void begin();
     
@@ -91,6 +101,8 @@ public:
     void displayDigit(const uint8_t digitID);
     void displayChar(const char letter);
     void displayText(String text, uint8_t repetitions);
+
+    void checkConnection();
 };
 
 extern TrackRayClass TrackRay;

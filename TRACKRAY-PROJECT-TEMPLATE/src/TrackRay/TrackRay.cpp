@@ -26,10 +26,16 @@ void TR::updatePWM(void * param) {
         pinMode(TR::LIGHT_PIN, OUTPUT);
         ledcAttachPin(TR::LIGHT_PIN, TR::LIGHT_PWM_CHANNEL);
         digitalWrite(TR::LIGHT_PIN, 0);
+        TrackRay.checkConnection();
         TrackRay.updateMotorsSpeed();
-        TrackRay.gyroUpdate();
 
         vTaskDelay(20);
+    }
+}
+void TR::updateGyro(void * param) {
+    for(;;) {
+        TrackRay.gyroUpdate();
+        vTaskDelay(50);
     }
 }
 bool digit[10][5][5] = {
@@ -127,6 +133,10 @@ void trrSetFlashLightAnalog(const int8_t value) {
     TrackRay.setFlashLight(int(value * 2.5));
 }
 
+void trrControlMovement(const int8_t joystickX, const int8_t joystickY) {
+    TrackRay.controlMovement(joystickX, joystickY);
+}
+
 void trrMotorsSetSpeed(const int8_t speedLeft, const int8_t speedRight) {
     TrackRay.setMotorsSpeed(speedLeft, 0);
     TrackRay.setMotorsSpeed(speedRight, 1);
@@ -137,8 +147,9 @@ void trrMotorsSetSpeedLeft(const int8_t speed) {
 void trrMotorsSetSpeedRight(const int8_t speed) {
     TrackRay.setMotorsSpeed(speed, 1);
 }
-void trrCanonSetSpeed(const int8_t speed) {
-    TrackRay.setMotorsSpeed(speed, 2);
+
+void trrCanonShoot(const uint16_t length) {
+    TrackRay.canonShoot(length);
 }
 
 bool trrGetGyroEnabled() {
@@ -160,6 +171,10 @@ void trrGyroData(float ypr[]) {
 }
 void trrGyroCalibrate() {
     TrackRay.gyroCalibrate();
+    trrSetLedAllDigital(1);
+}
+void trrGyroUpdate() {
+    TrackRay.gyroUpdate();
 }
 
 void trrDisplayDigit(const uint8_t digitID) {
@@ -176,7 +191,6 @@ TrackRayClass::TrackRayClass(void) {
     Serial.begin(115200);
     ledcSetup(TR::LIGHT_PWM_CHANNEL, TR::LIGHT_PWM_FREQUENCY, TR::LIGHT_PWM_RESOLUTION);
     ledcAttachPin(TR::LIGHT_PIN, TR::LIGHT_PWM_CHANNEL);
-    xTaskCreate(TR::updatePWM, "updatePWM", 10000 , (void*) 0, 1, NULL);
     for(uint8_t i = 0; i < 3; ++i) {
         motorsSpeed[i] = 0;
         motorsSpeedFiltered[i] = 0;
@@ -220,15 +234,25 @@ void TrackRayClass::setMotorsSpeed(const int8_t speed, const int8_t index) {
     
 }
 void TrackRayClass::updateMotorsSpeed() {
+    if(connectionActive == false) {
+        for(uint8_t i = 0; i < 3; ++i) {
+            motorsSpeed[i] = 0;
+        }
+    }
+    if(shootingEnd != 0 && millis() > shootingEnd) {
+        motorsSpeed[2] = 0;
+        shootingEnd = 0;
+    }
+
     // Enable H-bridge output 
-    if(motorsSpeed[0] != 0 || motorsSpeed[1] != 0) {
+    if(motorsSpeed[0] != 0 || motorsSpeed[1] != 0 || motorsSpeed[2]) {
         TR::setPWM(TR::serialPWM[TR::pwm_index[TR_OUT28]], 100);
     }
     else {
         TR::setPWM(TR::serialPWM[TR::pwm_index[TR_OUT28]], 0);
     }
 
-    // Filter motor speeds
+    // Filter motor speeds and turn off when connection not active
     for(uint8_t i = 0; i < 3; ++i) {
         motorsSpeedFiltered[i] = motorsSpeed[i] * TR::MOTOR_SPEED_FILTER_UPDATE_COEF + motorsSpeedFiltered[i] * (1 - TR::MOTOR_SPEED_FILTER_UPDATE_COEF);
     }
@@ -257,6 +281,36 @@ void TrackRayClass::updateMotorsSpeed() {
     TR::setPWM(TR::serialPWM[TR::pwm_index[TR_OUT26]], (int)motorsSpeedFiltered[2]);
 }
 
+void TrackRayClass::checkConnection() {
+    if(millis() > prevCommunicationTime + TR::communicationTimeout) {
+        connectionActive = false;
+    }
+    else {
+        connectionActive = true;
+    }
+}
+
+void TrackRayClass::controlMovement(const int8_t joystickX, const int8_t joystickY) {
+    prevCommunicationTime = millis();
+    int16_t engineLeftSpeed = 0;
+    int16_t engineRightSpeed = 0;
+
+    engineLeftSpeed = (joystickY + ((joystickY >= 0) ? 1 : -1) * joystickX);
+    engineRightSpeed = (joystickY - ((joystickY >= 0) ? 1 : -1) * joystickX);
+
+    engineLeftSpeed = constrain(engineLeftSpeed, -100, 100);
+    engineRightSpeed = constrain(engineRightSpeed, -100, 100);
+
+    setMotorsSpeed(engineLeftSpeed, 0);
+    setMotorsSpeed(engineRightSpeed, 1);
+}
+
+ void TrackRayClass::canonShoot(const uint16_t length) {
+      setMotorsSpeed(100, 2);
+      shootingEnd = millis() + length;
+ }
+
+
 void TrackRayClass::begin() {
     preferences.begin("trackray", false);
     gyroOffsets[0] = preferences.getInt("counter", 0);
@@ -275,6 +329,9 @@ void TrackRayClass::begin() {
             trrGyroCalibrate();
         }
     }
+    xTaskCreate(TR::updatePWM, "updatePWM", configMINIMAL_STACK_SIZE , (void*) 0, 1, NULL);
+    //xTaskCreate(TR::updateGyro, "updateGyro", 10000 , (void*) 0, 1, NULL);
+    //xTaskCreatePinnedToCore(TR::updateGyro, "updateGyro", 10000 , (void*) 0, 1, NULL, 1);
 }
 
 bool TrackRayClass::gyroGetEnabled() {

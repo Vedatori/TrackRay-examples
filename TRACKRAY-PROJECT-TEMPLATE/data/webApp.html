@@ -1,0 +1,324 @@
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<meta name="theme-color" content="#404040"/>
+		<title>TrackRay</title>
+		<link rel="stylesheet" type="text/css" href="style.css">
+		<style>
+			body {
+				overflow : hidden;
+			}
+			</style>
+	</head>
+	<body>
+		<div class = "wrapper">
+			<div class="box1"><a href="http://wp.vedatori.com/" target="_blank"><img src="http://wp.vedatori.com/wp-content/uploads/2019/03/logo-2-e1551903315141.png" alt="vedatori.com" style="height:10vh;" align="middle"></a></div>
+			<div class="box2"><h1 style="font-size:3.5vh;text-align:center"><font color = "#F5F5F5" face='verdana'>
+				<a href="https://github.com/vedatori/TrackRay" target="_blank">TrackRay</a><br>Remote Control
+			</font></h1></div>
+			<div class="box3" id="position">
+				<input type = "text" id = "commandInput" placeholder = "Command entry"/>
+				<input type = "button" value = "Enter" onclick = "commandEnter()"/>
+				<a href='/wifi'><input type = "button" value = "WiFi setup"/></a>
+			</div>
+			<div class="box31" id="cam">
+				<img id="stream" class="stream" src="">
+			</div>
+			<div class="box4" id="container"><canvas class="canvas" id="canvas"></canvas></div>
+		</div>
+		
+		<script>
+			const joystick = createJoystick(document.getElementById('container'));
+
+			const maxDiff = Math.min(document.getElementById('container').clientWidth, document.getElementById('container').clientHeight)/2.5;
+
+			var keysPressed = [false, false, false, false];	// front, rear, left, right
+			var arrowKeysCode = [38, 40, 37, 39];	// up, down, left, right
+			onkeydown = onkeyup = function(e){
+				e = e || event; // to deal with IE
+				for(var i = 0; i < 4; ++i) {
+					if(e.keyCode == arrowKeysCode[i]) {
+						keysPressed[i] = e.type == 'keydown';
+					}
+				}
+			}
+			var keySpeedStep = 4;
+			var keySpeedReturn = 1;
+			var keyTurnStep = 8;
+			var keyTurnReturn = 2;
+			
+			function createJoystick(parent) {
+				const stick = document.createElement('div');
+				stick.classList.add('joystick');
+
+				stick.addEventListener('mousedown', handleMouseDown);
+				document.addEventListener('mousemove', handleMouseMove);
+				document.addEventListener('mouseup', handleMouseUp);
+				stick.addEventListener('touchstart', handleMouseDown);
+				document.addEventListener('touchmove', handleMouseMove);
+				document.addEventListener('touchend', handleMouseUp);
+
+				let dragStart = null;
+				let currentPos = { x: 0, y: 0 };
+
+				function handleMouseDown(event) {
+					stick.style.transition = '0s';
+					if (event.changedTouches) {
+						dragStart = {
+							x: event.changedTouches[0].clientX,
+							y: event.changedTouches[0].clientY,
+						};
+						return;
+					}
+					dragStart = {
+					x: event.clientX,
+					y: event.clientY,
+					};
+				}
+
+				function getMaxDiff() {
+					return maxDiff;
+				}
+
+				function checkLimits() {
+					if(currentPos.x > maxDiff)
+						currentPos.x = maxDiff;
+					else if(currentPos.x < -maxDiff)
+						currentPos.x = -maxDiff;
+					if(currentPos.y > maxDiff)
+						currentPos.y = maxDiff;
+					else if(currentPos.y < -maxDiff)
+						currentPos.y = -maxDiff;
+				}
+				
+				setInterval(function() {
+					stick.style.transition = '0.1s';
+					stick.style.transform = `translate3d(${currentPos.x}px, ${currentPos.y}px, 0px)`;
+				}, 100);
+
+				setInterval(function() {
+					if(keysPressed[0]) {	// forward
+						if(currentPos.y <= 0) {
+							currentPos.y = currentPos.y - keySpeedStep;
+						}
+						else {
+							currentPos.y = 0;
+						}
+						
+					}
+					else if(keysPressed[1]) {	//backward
+						if(currentPos.y >= 0) {
+							currentPos.y = currentPos.y + keySpeedStep;
+						}
+						else {
+							currentPos.y = 0;
+						}
+					}
+					else if(currentPos.y < keySpeedStep && currentPos.y > -keySpeedStep) {	// fix to zero position
+						currentPos.y = 0;
+					}
+					else if(dragStart === null) {	//proceed to zero position
+						currentPos.y = currentPos.y + ((currentPos.y > 0) ? -1 : 1) * keySpeedReturn;	
+					}
+					if(keysPressed[2]) {	// left
+						if(currentPos.x <= 0) {
+							currentPos.x = currentPos.x - keyTurnStep;
+						}
+						else {
+							currentPos.x = 0;
+						}
+						
+					}
+					else if(keysPressed[3]) {	//right
+						if(currentPos.x >= 0) {
+							currentPos.x = currentPos.x + keyTurnStep;
+						}
+						else {
+							currentPos.x = 0;
+						}
+					}
+					else if(currentPos.x < keyTurnStep && currentPos.x > -keyTurnStep) {
+						currentPos.x = 0;
+					}
+					else if (dragStart === null) {	// fix to zero position
+						currentPos.x = currentPos.x + ((currentPos.x > 0) ? -1 : 1) * keyTurnReturn;	
+					}
+
+					checkLimits();
+				}, 20);
+
+				function handleMouseMove(event) {
+					if (dragStart === null) return;
+					if (event.changedTouches) {
+						event.clientX = event.changedTouches[0].clientX;
+						event.clientY = event.changedTouches[0].clientY;
+					}
+					currentPos.x = event.clientX - dragStart.x;
+					currentPos.y = event.clientY - dragStart.y;
+					checkLimits();
+				}
+
+				function handleMouseUp(event) {
+					if (dragStart === null) return;
+					stick.style.transition = '0.3s';
+					stick.style.transform = `translate3d(0px, 0px, 0px)`;
+					dragStart = null;
+					currentPos = { x: 0, y: 0 };
+				}
+
+				parent.appendChild(stick);
+				return {
+					getPosition: () => currentPos,
+				};
+			}
+
+			setInterval(function(){
+				var newX = Math.round(joystick.getPosition().x / maxDiff * 100);
+				var newY = Math.round(joystick.getPosition().y / maxDiff * -100);
+				doSend("control," + newX + "," + newY);
+
+			}, 100);
+
+			var canvas = document.getElementById('canvas');
+			canvas.style.background = "#505050";
+			canvas.style.width = 2 * maxDiff;
+			canvas.style.height = 2 * maxDiff;
+			canvas.style.marginTop = -maxDiff;
+			canvas.style.marginLeft = -maxDiff;
+			canvas.width = 2 * maxDiff;
+			canvas.height = 2 * maxDiff;
+			
+			var context = canvas.getContext('2d');
+			for(let step = 1; step < 6; step++) {
+				context.beginPath();
+				context.arc(maxDiff, maxDiff, document.getElementById('container').clientHeight/(step*2), 0, 2 * Math.PI, false);
+				if(step % 2 == 0)
+					context.fillStyle = '#303030';
+				else
+					context.fillStyle = '#404040';
+				context.fill();
+			}
+
+			window.onorientationchange = function() { 
+				var orientation = window.orientation; 
+				switch(orientation) { 
+					case 0:
+					case 90:
+					case -90: window.location.reload(); 
+					break; 
+				} 
+			};
+
+			//_____________________________________________________________________________
+			// This is called when the page finishes loading
+			var clientURL;
+			var clientConnected = false;
+			function init() {
+				// Connect to WebSocket server
+				var str = window.location.href;
+				clientURL = str.substring(4, str.length - 1);
+				clientURL = "ws" + clientURL + ":1337";
+				wsConnect(clientURL);
+				console.log(clientURL);
+			}
+			// Call this to connect to the WebSocket server
+			function wsConnect(url) {
+				if(clientConnected == true) {
+					return;
+				}
+				
+				// Connect to WebSocket server
+				websocket = new WebSocket(url);
+				
+				// Assign callbacks
+				websocket.onopen = function(evt) { onOpen(evt) };
+				websocket.onclose = function(evt) { onClose(evt) };
+				websocket.onmessage = function(evt) { onMessage(evt) };
+				websocket.onerror = function(evt) { onError(evt) };
+			}
+
+			// Called when a WebSocket connection is established with the server
+			function onOpen(evt) {
+
+				// Log connection state
+				console.log("Connected");
+
+				clientConnected = true;
+			}
+
+			// Called when the WebSocket connection is closed
+			function onClose(evt) {
+
+				// Log disconnection state
+				console.log("Disconnected");
+
+				clientConnected = false;
+				
+				// Try to reconnect after a few seconds
+				setTimeout(function() { wsConnect(clientURL) }, 1000);
+			}
+
+			// Called when a message is received from the server
+			function onMessage(evt) {
+
+				// Print out our received message
+				console.log("Received: " + evt.data);
+				
+				// Update circle graphic with LED state
+				switch(evt.data) {
+					case "0":
+						console.log("LED is off");
+						break;
+					case "1":
+						console.log("LED is on");
+						break;
+					default:
+						break;
+				}
+			}
+
+			// Called when a WebSocket error occurs
+			function onError(evt) {
+				console.log("ERROR: " + evt.data);
+			}
+
+			// Sends a message to the server (and prints it to the console)
+			function doSend(message) {
+				if(websocket.readyState == WebSocket.OPEN) {
+					console.log("Sending: " + message);
+					websocket.send(message);
+				}
+			}
+			
+			function commandEnter(){
+				var command = document.getElementById("commandInput");
+				var commandText = command.value;
+				if(commandText.length < 32) {
+					doSend("command," + commandText);
+				}
+				command.value = "";
+			}
+
+			document.getElementById("commandInput").addEventListener("keyup", function(e) {
+				if (e.keyCode == 13) {
+					commandEnter();
+				}
+			});
+
+			// Call the init function as soon as the page loads
+			window.addEventListener("load", init, false);
+
+			const view = document.getElementById('stream');
+			const WS_URL = "ws://" + window.location.host + ":82";
+			const ws = new WebSocket(WS_URL);
+					
+			ws.onmessage = message => {
+				if (message.data instanceof Blob) {
+				var urlObject = URL.createObjectURL(message.data);
+				view.src = urlObject;
+				}
+			};
+		</script>
+	</body>
+</html>

@@ -1,7 +1,7 @@
 #include "TrackRay/TrackRay.h"
 
 void setup() {
-    TrackRay.begin();
+    trrBegin();
     trrSetLedDigital(D1, true);
 }
 

@@ -4,6 +4,10 @@
 #include "GyroCalibration.h"
 #include "Preferences.h"
 
+#include "DisplayCharactersSet.h"
+#include "WiFiCaptain.h"
+#include "cam.h"
+
 const uint8_t TR::PWM_MAX = rb::SerialPWM::resolution();
 rb::SerialPWM TR::serialPWM(TR::PWM_CHANNELS, { TR::REG_DAT }, TR::REG_LATCH, TR::REG_CLK, -1, TR::PWM_FREQUENCY);
 int8_t TR::pwm_index[] = {0, 3, 2, 29, 28, 31, 30, 25, 24, 27, 26, 21, 20, 23, 22, 17, 16, 19, 18, 13, 12, 15, 14, 9, 8, 11, 10, 5, 4, 7, 6, 1, 0};
@@ -26,8 +30,11 @@ void TR::updatePWM(void * param) {
         pinMode(TR::LIGHT_PIN, OUTPUT);
         ledcAttachPin(TR::LIGHT_PIN, TR::LIGHT_PWM_CHANNEL);
         digitalWrite(TR::LIGHT_PIN, 0);
+
         TrackRay.checkConnection();
         TrackRay.updateMotorsSpeed();
+        TrackRay.displayText();
+        camWebSocketLoop();
 
         vTaskDelay(20);
     }
@@ -38,70 +45,10 @@ void TR::updateGyro(void * param) {
         vTaskDelay(50);
     }
 }
-bool digit[10][5][5] = {
-    {   // 0
-        {0,1,1,1,0},
-        {0,1,0,1,0},
-        {0,1,0,1,0},
-        {0,1,0,1,0},
-        {0,1,1,1,0}
-    }, {// 1
-        {0,0,0,1,0},
-        {0,0,1,1,0},
-        {0,1,0,1,0},
-        {0,0,0,1,0},
-        {0,0,0,1,0}
-    }, {// 2
-        {0,0,1,0,0},
-        {0,1,0,1,0},
-        {0,0,0,1,0},
-        {0,0,1,0,0},
-        {0,1,1,1,0}
-    }, {// 3
-        {0,1,1,1,0},
-        {0,0,0,1,0},
-        {0,0,1,0,0},
-        {0,0,0,1,0},
-        {0,1,1,0,0}
-    }, {// 4
-        {0,1,0,0,0},
-        {0,1,0,0,0},
-        {0,1,1,1,0},
-        {0,0,1,0,0},
-        {0,0,1,0,0}
-    }, {// 5
-        {0,1,1,1,0},
-        {0,1,0,0,0},
-        {0,1,1,1,0},
-        {0,0,0,1,0},
-        {0,1,1,1,0}
-    }, {// 6
-        {0,1,1,1,0},
-        {0,1,0,0,0},
-        {0,1,1,1,0},
-        {0,1,0,1,0},
-        {0,1,1,1,0}
-    }, {// 7
-        {0,1,1,1,0},
-        {0,0,0,1,0},
-        {0,0,1,0,0},
-        {0,1,0,0,0},
-        {0,1,0,0,0}
-    }, {// 8
-        {0,1,1,1,0},
-        {0,1,0,1,0},
-        {0,1,1,1,0},
-        {0,1,0,1,0},
-        {0,1,1,1,0}
-    }, {// 9
-        {0,1,1,1,0},
-        {0,1,0,1,0},
-        {0,1,1,1,0},
-        {0,0,0,1,0},
-        {0,1,1,1,0}
-    },
-};
 
+void trrBegin() {
+    TrackRay.begin();
+}
 
 bool trrReadButton() {
     return TrackRay.getButton(); 
@@ -148,8 +95,12 @@ void trrMotorsSetSpeedRight(const int8_t speed) {
     TrackRay.setMotorsSpeed(speed, 1);
 }
 
-void trrCanonShoot(const uint16_t length) {
-    TrackRay.canonShoot(length);
+void trrCanonShoot(const uint16_t durationMs = 1000) {
+    TrackRay.canonShoot(durationMs);
+}
+
+void trrBuzzerBeep(const uint16_t durationMs = 500) {
+    TrackRay.buzzerBeep(durationMs);
 }
 
 bool trrGetGyroEnabled() {
@@ -183,12 +134,36 @@ void trrDisplayDigit(const uint8_t digitID) {
 void trrDisplayChar(const char letter) {
     TrackRay.displayChar(letter);
 }
-void trrDisplayText(String text, uint8_t repetitions) {
-    TrackRay.displayText(text, repetitions);
+void trrDisplayText(String text, bool sweep) {
+    TrackRay.displayText(text, sweep);
+}
+bool trrIsDisplayingText() {
+    return TrackRay.isDisplayingText();
+}
+
+void trrWiFiControlStart(String wifiName, String wifiPassword) {
+    TrackRay.startWiFiCaptain(wifiName, wifiPassword);
+}
+String trrCommandGet() {
+    return TrackRay.commandGet();
+}
+String trrCommandGetIndexed(uint8_t index) {
+    return TrackRay.commandGetIndexed(index);
+}
+void trrCommandClear() {
+    TrackRay.commandClear();
+}
+void trrCommandSend(String command) {
+    TrackRay.commandSend(command);
+}
+void trrCamEnable() {
+    camStreamEnable();
+}
+void trrCamDisable() {
+    camStreamDisable();
 }
 
 TrackRayClass::TrackRayClass(void) {
-    Serial.begin(115200);
     ledcSetup(TR::LIGHT_PWM_CHANNEL, TR::LIGHT_PWM_FREQUENCY, TR::LIGHT_PWM_RESOLUTION);
     ledcAttachPin(TR::LIGHT_PIN, TR::LIGHT_PWM_CHANNEL);
     for(uint8_t i = 0; i < 3; ++i) {
@@ -234,7 +209,7 @@ void TrackRayClass::setMotorsSpeed(const int8_t speed, const int8_t index) {
     
 }
 void TrackRayClass::updateMotorsSpeed() {
-    if(connectionActive == false) {
+    if(connectionEnabled == true && connectionActive == false) {
         for(uint8_t i = 0; i < 3; ++i) {
             motorsSpeed[i] = 0;
         }
@@ -242,6 +217,10 @@ void TrackRayClass::updateMotorsSpeed() {
     if(shootingEnd != 0 && millis() > shootingEnd) {
         motorsSpeed[2] = 0;
         shootingEnd = 0;
+    }
+    if(beepingEnd != 0 && millis() > beepingEnd) {
+        TR::setPWM(TR::serialPWM[TR::pwm_index[TR_OUT27]], 0);
+        beepingEnd = 0;
     }
 
     // Enable H-bridge output 
@@ -281,15 +260,6 @@ void TrackRayClass::updateMotorsSpeed() {
     TR::setPWM(TR::serialPWM[TR::pwm_index[TR_OUT26]], (int)motorsSpeedFiltered[2]);
 }
 
-void TrackRayClass::checkConnection() {
-    if(millis() > prevCommunicationTime + TR::communicationTimeout) {
-        connectionActive = false;
-    }
-    else {
-        connectionActive = true;
-    }
-}
-
 void TrackRayClass::controlMovement(const int8_t joystickX, const int8_t joystickY) {
     prevCommunicationTime = millis();
     int16_t engineLeftSpeed = 0;
@@ -305,13 +275,20 @@ void TrackRayClass::controlMovement(const int8_t joystickX, const int8_t joystic
     setMotorsSpeed(engineRightSpeed, 1);
 }
 
- void TrackRayClass::canonShoot(const uint16_t length) {
-      setMotorsSpeed(100, 2);
-      shootingEnd = millis() + length;
- }
+void TrackRayClass::canonShoot(const uint16_t length) {
+    setMotorsSpeed(100, 2);
+    shootingEnd = millis() + length;
+}
 
+void TrackRayClass::buzzerBeep(const uint16_t length) {
+    TR::setPWM(TR::serialPWM[TR::pwm_index[TR_OUT27]], 100);
+    beepingEnd = millis() + length;
+}
 
 void TrackRayClass::begin() {
+    beginCalled = true;
+    Serial.begin(115200);
+    
     preferences.begin("trackray", false);
     gyroOffsets[0] = preferences.getInt("counter", 0);
     gyroOffsets[1] = preferences.getInt("gyroOffPitch", 0);
@@ -329,7 +306,8 @@ void TrackRayClass::begin() {
             trrGyroCalibrate();
         }
     }
-    xTaskCreate(TR::updatePWM, "updatePWM", configMINIMAL_STACK_SIZE , (void*) 0, 1, NULL);
+    camInit();
+    xTaskCreate(TR::updatePWM, "updatePWM", 10000 , (void*) 0, 1, NULL);
     //xTaskCreate(TR::updateGyro, "updateGyro", 10000 , (void*) 0, 1, NULL);
     //xTaskCreatePinnedToCore(TR::updateGyro, "updateGyro", 10000 , (void*) 0, 1, NULL, 1);
 }
@@ -362,33 +340,135 @@ void TrackRayClass::gyroUpdate() {
     updateGyroData(gyroYPR);
 }
 
-void TrackRayClass::displayDigit(const uint8_t digitID) {
-    for(uint8_t i = 0; i < 5; ++i) {
-        for(uint8_t j = 0; j < 5; ++j) {
-            trrSetLedDigital( i*5 + j + 1, digit[digitID][i][j]);
-        }
-    }
-}
-void TrackRayClass::displayChar(const char letter) {
-    if(letter < 48 || letter > 57) {
+void TrackRayClass::displayDigit(const uint8_t digit) {
+    if(digit > 9) {
         return;
     }
-    displayDigit(letter - 48);
+    displayChar(digit + 48);
 }
-void TrackRayClass::displayText(String text, uint8_t repetitions) {
-    for(uint8_t i = 0; i < repetitions; ++i) {
-        trrSetLedAllDigital(1);
-        delay(200);
-        for(uint8_t i = 0; i < text.length(); ++i) {
-            displayChar(text[i]);
-            delay(500);
-            trrSetLedAllDigital(0);
-            delay(50);
-        }
-        trrSetLedAllDigital(1);
-        delay(500);
-        trrSetLedAllDigital(0);
+
+void TrackRayClass::displayChar(const char letter, int8_t sweepRight, int8_t sweepDown) {
+    uint8_t letterID = letter;
+    if(letterID >= 97 && letterID <= 122) {
+        letterID = letterID - 32;   // change to upper case letters
     }
+    if(letterID < 40 || letterID > 90) {
+        return;     // out of defined letters
+    }
+    letterID = letterID - 40;   // move to beginning of character set array
+    for(uint8_t i = 0; i < 5; ++i) {
+        for(uint8_t j = 0; j < 5; ++j) {
+            int16_t ledIndex = (i + sweepDown)*5 + j + sweepRight + 1;
+            if((i + sweepDown) >= 0 && (i + sweepDown) < 5 && (j + sweepRight) >= 0 && (j + sweepRight) < 5) {
+                trrSetLedDigital(ledIndex, characterSet[letterID][i][j]);
+            }
+        }
+    }
+}
+
+void TrackRayClass::displayText(String text, bool sweep) {
+    static uint8_t letterIndex;
+    static uint32_t prevMoveTime = 0;
+    static bool sweeping;
+    if(text.length() > 0) {
+        displayTextBuffer = text;
+        letterIndex = 0;
+        prevMoveTime = millis();
+        sweeping = sweep;
+    }
+    if(prevMoveTime == 0) {
+        return;
+    }
+
+    if(sweeping) {
+        if((millis() > prevMoveTime + TR::lettersSweepTimeout) && letterIndex <= (displayTextBuffer.length()*5)) {
+            prevMoveTime = millis();
+
+            uint8_t letterID1 = displayTextBuffer[letterIndex / 5];
+            uint8_t letterID2 = displayTextBuffer[letterIndex / 5 + 1];
+
+            trrSetLedAllDigital(0);
+            displayChar(letterID1, -(letterIndex % 5));
+            displayChar(letterID2, (5 - (letterIndex % 5)));
+
+            if(letterIndex / 5 >= displayTextBuffer.length()) {
+                displayTextBuffer = "";
+                prevMoveTime = 0;
+            }
+            ++letterIndex;
+        }
+    }
+    else {
+        if(millis() > prevMoveTime + TR::lettersSwapTimeout - TR::lettersBlankTimeout) {
+            trrSetLedAllDigital(0);
+        }
+        if((millis() > prevMoveTime + TR::lettersSwapTimeout) && letterIndex <= displayTextBuffer.length()) {
+            prevMoveTime = millis();
+
+            trrSetLedAllDigital(0);
+            displayChar(displayTextBuffer[letterIndex]);
+
+            if(letterIndex >= displayTextBuffer.length()) {
+                displayTextBuffer = "";
+                prevMoveTime = 0;
+            }
+            ++letterIndex;
+        }
+    }
+}
+
+bool TrackRayClass::isDisplayingText() {
+    return !displayTextBuffer.isEmpty();
+}
+
+void TrackRayClass::startWiFiCaptain(String ssid, String password) {
+    if(!beginCalled) {
+        begin();
+    }
+    setApCredentials(ssid, password);
+    wifiCaptInit();
+    connectionEnabled = true;
+    camWebSocketStart();
+}
+
+void TrackRayClass::checkConnection() {
+    if(!connectionEnabled) {
+        return;
+    }
+    if(millis() > prevCommunicationTime + TR::communicationTimeout) {
+        connectionActive = false;
+    }
+    else {
+        connectionActive = true;
+    }
+}
+
+String TrackRayClass::commandGet() {
+    String command = String(commandGetCaptain());
+    command.toLowerCase();
+    return command;
+}
+
+String TrackRayClass::commandGetIndexed(uint8_t index) {
+    char commandBuffer[64];
+    sprintf(commandBuffer, commandGetCaptain());
+    const char delimiter[2] = " ";
+    char *token;
+    token = strtok((char *)commandBuffer, delimiter);
+    for(uint8_t i = 0; i < index; ++i) {
+        token = strtok(NULL, delimiter);
+    }
+    String command = String(token);
+    command.toLowerCase();
+    return command;
+}
+
+void TrackRayClass::commandClear() {
+    commandClearCaptain();
+}
+
+void TrackRayClass::commandSend(String command) {
+    commandSendCaptain(command);
 }
 
 TrackRayClass TrackRay;

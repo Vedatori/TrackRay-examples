@@ -95,11 +95,11 @@ void trrMotorsSetSpeedRight(const int8_t speed) {
     TrackRay.setMotorsSpeed(speed, 1);
 }
 
-void trrCanonShoot(const uint16_t durationMs = 1000) {
+void trrCanonShoot(const uint16_t durationMs) {
     TrackRay.canonShoot(durationMs);
 }
 
-void trrBuzzerBeep(const uint16_t durationMs = 500) {
+void trrBuzzerBeep(const uint16_t durationMs) {
     TrackRay.buzzerBeep(durationMs);
 }
 
